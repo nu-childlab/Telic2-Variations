@@ -1,4 +1,4 @@
-function [] = TelicWroclaw()
+function [] = Telic2v2()
 
 %%%%%%FUNCTION DESCRIPTION
 %TelicWroclaw is a Telic experiment that manipulates time correlation
@@ -329,10 +329,6 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     Screen('FillRect', window, grey);
     Screen('Flip', window);
     while pt <= totalpoints
-        %If the current point is a break point, pause
-        if any(pt == Breaks)
-            WaitSecs(breakTime);
-        end
         destRect = [xpoints(pt) - 128/2, ... %left
             ypoints(pt) - 128/2, ... %top
             xpoints(pt) + 128/2, ... %right
@@ -344,6 +340,10 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
         % Flip to the screen
         vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
         pt = pt + 1;
+        %If the current point is a break point, pause
+        if any(pt == Breaks)
+            WaitSecs(breakTime);
+        end
         
     end
     Screen('FillRect', window, black);
@@ -618,22 +618,31 @@ end
 
 function [Breaks] = makeBreaks(breakType, totalpoints, loops, minSpace)
     if strcmp(breakType, 'equal')
-        Breaks = 1 : totalpoints/loops : totalpoints;
+        %Breaks = 1 : totalpoints/loops : totalpoints;
+        Breaks = linspace(totalpoints/loops+1, totalpoints+1, loops);
 
     elseif strcmp(breakType, 'random')
-        %tbh I found this on stackpverflow and have no idea how it works
+        %tbh I found this on stackoverflow and have no idea how it works
         %lol
-        E = totalpoints-(loops-1)*minSpace;
+        if loops >1
+            numberOfBreaks = loops - 1;
+            E = totalpoints-(numberOfBreaks-1)*minSpace;
 
-        ro = rand(loops+1,1);
-        rn = E*ro(1:loops)/sum(ro);
+            ro = rand(numberOfBreaks+1,1);
+            rn = E*ro(1:numberOfBreaks)/sum(ro);
 
-        s = minSpace*ones(loops,1)+rn;
+            s = minSpace*ones(numberOfBreaks,1)+rn;
 
-        Breaks=cumsum(s)-1;
-        
-        Breaks = reshape(Breaks, 1, length(Breaks));
-        Breaks = arrayfun(@(x) round(x),Breaks);
+            Breaks=cumsum(s)-1;
+
+            Breaks = reshape(Breaks, 1, length(Breaks));
+            Breaks = arrayfun(@(x) round(x),Breaks);
+            Breaks = [Breaks totalpoints];
+        else
+            Breaks = [totalpoints];
+        end
+        %I'm adding one break on at the end, otherwise I'll end up with
+        %more "pieces" than in the equal condition.
 
     else
         Breaks = [];
@@ -681,7 +690,7 @@ end
 
 function [cond] = condcheck(cond)
     while ~strcmp(cond, 'm') && ~strcmp(cond, 'c')
-        cond = input('Condition must be m or c. Please enter m (mass) or q (count): ', 's');
+        cond = input('Condition must be m or c. Please enter m (mass) or c (count): ', 's');
     end
 end
 
