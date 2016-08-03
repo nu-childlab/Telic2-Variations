@@ -1,7 +1,7 @@
 function [] = Telic2v2()
 
 %%%%%%FUNCTION DESCRIPTION
-%TelicWroclaw is a Telic experiment that manipulates time correlation
+%Telic2v2 is a Telic experiment where the events follow broken-up paths
 %It is meant for standalone use
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -14,19 +14,18 @@ screenNumber = max(screens);
 rng('shuffle');
 KbName('UnifyKeyNames');
 
-cond=input('Condition m or c: ', 's');
+cond=input('Condition e or o: ', 's');
 cond = condcheck(cond);
 subj=input('Subject Number: ', 's');
 subj = subjcheck(subj);
-list=input('List color: ', 's');
-list = listcheck(list);
+
 
 %%%%%%%%
 %COLOR PARAMETERS
 %%%%%%%%
 white = WhiteIndex(screenNumber);
 black = BlackIndex(screenNumber);
-grey = white/2;
+%grey = white/2;
 
 %%%Screen Stuff
 
@@ -45,7 +44,9 @@ ifi = Screen('GetFlipInterval', window);
 %FINISHED PARAMETERS
 %%%%%%
 
+loopTime = .75;
 
+framesPerLoop = round(loopTime / ifi) + 1;
 
 minSpace = 10;
 %the minimum possible number of frames between steps
@@ -71,39 +72,29 @@ squote = ' ''';
 %LISTS
 %%%%%%
 
-correlation_list = {'corr';'corr';'corr';'corr';'corr';'corr';'corr';...
-    'corr';'corr';'corr';'anti';'anti';'anti';'anti';'anti';'anti';...
-    'anti';'anti';'anti';'anti'};
+pairsbase = [4; 5; 6; 7; 8; 9];
+len = numel(pairsbase);
+pairs = [pairsbase;pairsbase];
+breaklistbase = [repmat({'equal'}, len, 1); repmat({'random'}, len, 1)];
+breaklist = breaklistbase;
+reps = 4;
 
-if strcmp(list, 'test')
-    trial_list = {[4 5; 5 4;]; [9 7; 7 9]};
-    trial_list = [trial_list;trial_list];
-    correlation_list = {'corr';'corr';'anti';'anti'};
-elseif strcmp(list, 'blue')
-    trial_list = {[4 5; 5 4;]; [4 6; 6 4]; [4 7; 7 4]; [4 8; 8 4]; [4 9; 9 4]; ...
-        [9 4; 4 9]; [9 5; 5 9]; [9 6; 6 9]; [9 7; 7 9]; [9 8; 8 9]};
-    trial_list = [trial_list;trial_list];
-elseif strcmp(list, 'pink')
-    trial_list = {[5 6; 6 5]; [5 7; 7 5]; [5 8; 8 5]; [5 9; 9 5]; [4 9; 9 4]; ...
-        [9 4; 4 9]; [8 4; 4 8]; [8 5; 5 8]; [8 6; 6 8]; [8 7; 7 8]};
-    trial_list = [trial_list;trial_list];
-elseif strcmp(list, 'green')
-    trial_list = {[6 7; 7 6]; [6 8; 8 6]; [6 9; 9 6]; [5 9; 9 5]; [4 9; 9 4]; ...
-        [9 4; 4 9]; [8 4; 4 8]; [7 4; 4 7]; [7 5; 5 7]; [7 6; 6 7]};
-    trial_list = [trial_list;trial_list];
-elseif strcmp(list, 'orange')
-    trial_list = {[7 8; 8 7]; [6 8; 8 6]; [5 8; 8 5]; [4 8; 8 4]; [4 9; 9 4]; ...
-        [9 4; 4 9]; [9 5; 5 9]; [8 5; 5 8]; [7 5; 5 7]; [6 5; 5 6]};
-    trial_list = [trial_list;trial_list];
-elseif strcmp(list, 'yellow')
-    trial_list = {[4 9; 9 4]; [5 9; 9 5]; [6 9; 9 6]; [7 9; 9 7]; [8 9; 9 8]; ...
-        [5 4; 4 5]; [6 4; 4 6]; [7 4; 4 7]; [8 4; 4 8]; [9 4; 4 9]};
-    trial_list = [trial_list;trial_list];
+while reps > 0
+    pairs = [pairs;pairsbase];
+    breaklist = [breaklist;breaklistbase];
+    reps= reps-1;
 end
 
-shuff = randperm(length(trial_list));
-trial_list = trial_list(shuff,:);
-correlation_list = correlation_list(shuff);
+shuff = randperm(length(pairs));
+trial_list = pairs(shuff,:);
+breaklist = breaklist(shuff);
+displayTime = 3;
+
+if strcmp(subj, 's999')
+    trial_list = [4; 5];
+    breaklist = {'equal'; 'random'};
+    displayTime = 1;
+end
 
 
 %%%%%%%Screen Prep
@@ -158,81 +149,40 @@ initprint = 0;
 if ~(exist('Data/Wroclaw/TelicWroclawdata.csv', 'file') == 2)
     initprint = 1;
 end
-dataFile = fopen('Data/Wroclaw/TelicWroclawdata.csv', 'a');
-subjFile = fopen(['Data/Wroclaw/TelicWroclaw' subj '.csv'],'a');
+dataFile = fopen('Data/2v2/Telic2v2data.csv', 'a');
+subjFile = fopen(['Data/2v2/Telic2v2_' subj '.csv'],'a');
 if initprint
-    fprintf(dataFile, ['subj,time,cond,break,list,star loops,heart loops,contrast,correlated?,total star time,total heart time,response\n']);
+    fprintf(dataFile, 'subject,time,condition,break,loops,response\n');
 end
-fprintf(subjFile, 'subj,time,cond,break,list,star loops,heart loops,contrast,correlated?,total star time,total heart time,response\n');
-lineFormat = '%s,%6.2f,%s,%s,%s,%d,%d,%d,%s,%6.2f,%6.2f,%s\n';
+fprintf(subjFile, 'subject,time,condition,break,loops,response\n');
+lineFormat = '%s,%6.2f,%s,%s,%d,%s\n';
 
 %%%%%Conditions and List Setup
 
-if strcmp(cond,'m')
-    blockList = {'mass', 'count'};
+if strcmp(cond,'e')
+    blockList = {'events', 'objects'};
 else
-    blockList = {'count', 'mass'};
+    blockList = {'objects', 'events'};
 end
 
-correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
-%anticorrelated_values = [9, 8.25, 7.5, 6.75, 6, 5.25, 4.5, 3.75, 3];
-anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
+% correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
+% anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
 
 %%%%%%RUNNING
 
 instructions(window, screenXpixels, screenYpixels, textsize, textspace)
 c = 1;
-training_list = [1;2;3;1;2;3];
-training_correlation = {'corr'; 'corr'; 'corr'; 'anti'; 'anti'; 'anti'};
-training_shape = {'star'; 'star'; 'star'; 'heart'; 'heart'; 'heart'};
+
 
 for condition = blockList
-    if strcmp(condition,'mass')
-        breakType = 'random';
-        cond = 'mass';
+    if strcmp(condition,'events')
+        events = 1;
     else
-        breakType='equal';
-        cond = 'count';
+        events = 0;
     end
     
-    shuff = randperm(length(training_list));
-    training_list = training_list(shuff,:);
-    training_correlation = training_correlation(shuff,:);
-    training_shape = training_shape(randperm(length(training_shape)),:);
 
-    %%%%%%TRAINING
-    
-    for t = 1:length(training_list)
-        numberOfLoops = training_list(t);
-        if strcmp(training_correlation{t}, 'corr')
-            totaltime = correlated_values(numberOfLoops);
-        else
-            totaltime = anticorrelated_values(numberOfLoops);
-        end
-        if strcmp(training_shape{t}, 'star')
-            training_image = starTexture;
-        else
-            training_image = heartTexture;
-        end
-        
-        if t == 1
-            phase = 1;
-        elseif t == length(training_list)
-            phase = 3;
-        else
-            phase = 2;
-        end
-               
-        loopTime = totaltime/numberOfLoops;
-        framesPerLoop = round(loopTime / ifi) + 1;
-        trainSentence(window, textsize, textspace, phase, training_shape{t}, breakType, screenYpixels);
-        animateEventLoops(numberOfLoops, framesPerLoop, ...
-            minSpace, scale, xCenter, yCenter, window, ...
-            pauseTime, breakType, breakTime, screenNumber, training_image, ...
-            ifi, vbl)
-    end
-
-    testingSentence(window, textsize, textspace, breakType, screenYpixels)
+    %testingSentence(window, textsize, textspace, breakType, screenYpixels)
 
     %%%%%%RUNNING
     
@@ -243,51 +193,29 @@ for condition = blockList
         %fixation cross
         fixCross(xCenter, yCenter, black, window, crossTime)
         
-        %first animation, with star
-        trial = trial_list{x};
-        trial = trial(randi([1,2]),:);
-        numberOfLoops = trial(1);
-        startotaltime = anticorrelated_values(numberOfLoops);
-        if strcmp(correlation_list{x}, 'corr')
-            startotaltime = correlated_values(numberOfLoops);
+        %draw the thing
+        numberOfLoops = trial_list(x);
+        breakType = breaklist{x};
+        
+        if events
+            animateEventLoops(numberOfLoops, framesPerLoop, ...
+                minSpace, scale, xCenter, yCenter, window, ...
+                pauseTime, breakType, breakTime, screenNumber, starTexture, ...
+                ifi, vbl)
+        else
+            displayObjectLoops(numberOfLoops, framesPerLoop, ...
+                minSpace, scale, xCenter, yCenter, window, ...
+                pauseTime, breakType, screenNumber, displayTime)
         end
-        loopTime = startotaltime/numberOfLoops;
-        framesPerLoop = round(loopTime / ifi) + 1;
-
-        animateEventLoops(numberOfLoops, framesPerLoop, ...
-            minSpace, scale, xCenter, yCenter, window, ...
-            pauseTime, breakType, breakTime, screenNumber, starTexture, ...
-            ifi, vbl)
         
-        %fixation cross
-        fixCross(xCenter, yCenter, black, window, crossTime)
-        
-        %second animation, with heart
-        numberOfLoops = trial(2);
-        hearttotaltime = anticorrelated_values(numberOfLoops);
-        if strcmp(correlation_list{x}, 'corr')
-            hearttotaltime = correlated_values(numberOfLoops);
-        end
-        loopTime = hearttotaltime/numberOfLoops;
-        framesPerLoop = round(loopTime / ifi) + 1;
-
-        animateEventLoops(numberOfLoops, framesPerLoop, ...
-            minSpace, scale, xCenter, yCenter, window, ...
-            pauseTime, breakType, breakTime, screenNumber, heartTexture, ...
-            ifi, vbl)
-        
-        [response, time] = getResponse(window, breakType, textsize, screenYpixels);
-%         response = 'na';
-%         time = 0;
-        fprintf(dataFile, lineFormat, subj, time*1000, cond, breakType, list, trial(1),...
-            trial(2), abs(trial(1) - trial(2)),correlation_list{x},startotaltime,hearttotaltime,response);
-        fprintf(subjFile, lineFormat, subj, time*1000, cond, breakType, list, trial(1),...
-            trial(2), abs(trial(1) - trial(2)),correlation_list{x},startotaltime,hearttotaltime,response);
+        [response, time] = getResponse(window, screenXpixels, screenYpixels, textsize, condition{1});
+        fprintf(dataFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
+        fprintf(subjFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
     end
-    if c
+    if c<2
         breakScreen(window, textsize, textspace);
     end
-    c = c-1;
+    c = c+1;
 
 end %ending the block
 %%%%%%Finishing and exiting
@@ -321,14 +249,14 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     [xpoints, ypoints] = getPoints(numberOfLoops, framesPerLoop);
     totalpoints = numel(xpoints);
     Breaks = makeBreaks(breakType, totalpoints, numberOfLoops, minSpace);
+    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
-    %points = [xpoints ypoints];
     pt = 1;
     waitframes = 1;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
-    while pt <= totalpoints
+    while pt <= totalpoints-1
         destRect = [xpoints(pt) - 128/2, ... %left
             ypoints(pt) - 128/2, ... %top
             xpoints(pt) + 128/2, ... %right
@@ -341,7 +269,7 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
         vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
         pt = pt + 1;
         %If the current point is a break point, pause
-        if any(pt == Breaks)
+        if any(pt == Breaks) || pt == totalpoints-1
             WaitSecs(breakTime);
         end
         
@@ -351,36 +279,66 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     WaitSecs(pauseTime);
 end
 
-%%%%%%INSTRUCTIONS, BREAK, AND FINISH FUNCTION%%%%%%%%%
+
+function [] = displayObjectLoops(numberOfLoops, framesPerLoop, ...
+    minSpace, scale, xCenter, yCenter, window, ...
+    pauseTime, breakType, screenNumber, displayTime)
+    white = WhiteIndex(screenNumber);
+    black = BlackIndex(screenNumber);
+    grey = white/2;
+    [xpoints, ypoints] = getPoints(numberOfLoops, framesPerLoop);
+    totalpoints = numel(xpoints);
+    Breaks = makeBreaks(breakType, totalpoints, numberOfLoops, minSpace);
+    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
+    xpoints = (xpoints .* scale) + xCenter;
+    ypoints = (ypoints .* scale) + yCenter;
+    Screen('FillRect', window, grey);
+    Screen('Flip', window);
+    for p = 1:totalpoints - 2
+        if ~any(p == Breaks) && ~any(p+1 == Breaks)
+            %Screen('DrawDots', window, [points(p, 1) points(p, 2)], 5, black, [], 2);
+            Screen('DrawLine', window, black, xpoints(p), ypoints(p), ...
+                xpoints(p+1), ypoints(p+1), 5);
+        end
+    end
+    Screen('Flip', window);
+    WaitSecs(displayTime);
+    Screen('FillRect', window, black);
+    Screen('Flip', window);
+    WaitSecs(pauseTime);
+end
+
+%%%%%%SENTENCE FUNCTIONS%%%%%%%%%
 function [] = instructions(window, screenXpixels, screenYpixels, textsize, textspace)
     Screen('TextFont',window,'Arial');
     Screen('TextSize',window,textsize);
-    black = BlackIndex(window);
     white = WhiteIndex(window);
     textcolor = white;
-    xedgeDist = floor(screenXpixels / 3);
     quote = '''';
-    intro = ['Welcome to the experiment. In this experiment, you will be asked to answer',...
-        ' questions relative to short animations. There are 2 blocks in the experiment,',...
-        ' and each block contains 20 trials. In each block, you will be asked to evaluate',...
-        ' a different question. You will be given a short break between blocks. \n\n',...
-        ' For each animation, you will indicate whether the sentence accurately describes',...
-        ' that animation by pressing ' quote 'f' quote ' for YES or ' quote 'j' quote ' for NO.',...
-        ' You will be reminded of these response keys throughout. '];
     
-    DrawFormattedText(window, intro, 'center', screenYpixels/7, textcolor, 70, 0, 0, textspace);
-    
-    intro2 = ['The experiment will proceed in two main parts. Please indicate to the experimenter if you have any questions, '...
-        'or are ready to begin the experiment. \n\n When the experimenter has '...
+    intro = ['In this experiment, you will be asked to consider some images'...
+        ' and animations. Your task is to decide how you would prefer to describe'...
+        ' what is displayed in each image or animation. \n \n'...
+        'You will be able to indicate your preference using the '...
+        quote 'f' quote ' and ' quote, 'j'  quote ' keys.'];
+
+    DrawFormattedText(window, intro, 'center', 30, textcolor, 70, 0, 0, textspace);
+    Screen('TextSize',window,textsize + 4);
+    DrawFormattedText(window, ['Press ' quote 'f' quote ' if you prefer \n'...
+        'the sentence on the left.'],screenXpixels/3-250, 'center', textcolor, 70);
+    DrawFormattedText(window, ['Press ' quote 'j' quote ' if you prefer \n'...
+        'the sentence on the right.'],2*screenXpixels/3-120, 'center', textcolor, 70);
+    Screen('TextSize',window,textsize);
+    intro2 = ['Please indicate to the experimenter if you have any questions, '...
+        'or are ready to begin the experiment. \n When the experimenter has '...
         'left the room, you may press spacebar to begin.'];
     
-    DrawFormattedText(window, intro2, 'center', 2*screenYpixels/3, textcolor, 70, 0, 0, textspace);
+    DrawFormattedText(window, intro2, 'center', 4*screenYpixels/5, textcolor, 70, 0, 0, textspace);
     Screen('Flip', window);
     RestrictKeysForKbCheck(KbName('space'));
     KbStrokeWait;
     Screen('Flip', window);
     RestrictKeysForKbCheck([]);
-
 end
 
 function [] = breakScreen(window, textsize, textspace)
@@ -415,33 +373,46 @@ function [] = finish(window, textsize, textspace)
     RestrictKeysForKbCheck(KbName('ESCAPE'));
     KbStrokeWait;
     Screen('Flip', window);
+    RestrictKeysForKbCheck([]);
 end
 
 
 %%%%%%RESPONSE FUNCTION%%%%%
 
-function [response, time] = getResponse(window, breakType, textsize, screenYpixels)
-    black = BlackIndex(window);
+
+function [response, time] = getResponse(window, screenXpixels, screenYpixels, textsize, cond)
     white = WhiteIndex(window);
     textcolor = white;
     Screen('TextFont',window,'Arial');
-    Screen('TextSize',window,textsize+6);
-    quote = '''';
-    if strcmp(breakType, 'random')
-        verb = 'gleeb';
-    else
-        verb = 'blick';
-    end
-    DrawFormattedText(window, ['Did the star ' verb ' more than the heart?'],...
-        'center', 'center', textcolor, 70, 0, 0, 1.5);
     Screen('TextSize',window,textsize);
-    DrawFormattedText(window, ['Press ' quote 'f' quote ' for YES and ' quote 'j' quote ' for NO'],...
-        'center', screenYpixels/2 + 80, textcolor, 70);
+    quote = '''';
+    if strcmp(cond, 'objects')
+        question = 'How would you prefer to describe that image?';
+        optf = 'There were some GORPS.';
+        optj = 'There was some GORP.';
+    else
+        question = 'How would you prefer to describe that animation?';
+        optf = 'The star did some GLEEBS.';
+        optj = 'The star did some GLEEBING.';
+    end
+
+    DrawFormattedText(window, question, 'center', screenYpixels/3, textcolor, 70);
+    
+    Screen('TextSize',window,textsize + 4);
+    DrawFormattedText(window, optf, screenXpixels/3-250, 'center', textcolor, 70);
+    DrawFormattedText(window, optj, 2*screenXpixels/3-120, 'center', textcolor, 70);
+    
+    Screen('TextSize',window,textsize);
+    DrawFormattedText(window, ['Press ' quote 'f' quote],...
+        screenXpixels/3-100, screenYpixels/2+30, textcolor, 70);
+    DrawFormattedText(window, ['Press ' quote 'j' quote],...
+        2*screenXpixels/3+20, screenYpixels/2+30, textcolor, 70);
+        
     Screen('Flip',window);
 
     % Wait for the user to input something meaningful
+    RestrictKeysForKbCheck([KbName('f') KbName('j')]);
     inLoop=true;
-    %response = '-1';
     yesno = [KbName('f') KbName('j')];
     starttime = GetSecs;
     while inLoop
@@ -451,18 +422,18 @@ function [response, time] = getResponse(window, breakType, textsize, screenYpixe
             code = find(keyCode);
             if any(code(1) == yesno)
                 endtime = GetSecs;
-                if code == 9
+                if code == KbName('f')
                     response = 'f';
-                    inLoop=false;
                 end
-                if code== 13
+                if code== KbName('j')
                     response= 'j';
-                    inLoop=false;
                 end
+                inLoop=false;
             end
         end
     end
     time = endtime - starttime;
+    RestrictKeysForKbCheck([]);
 end
 
 
@@ -484,85 +455,6 @@ function[] = fixCross(xCenter, yCenter, black, window, crossTime)
     WaitSecs(crossTime);
 end
 
-
-%%%%%SENTENCE/INSTRUCTIONS FUNCTIONS%%%%%
-
-function [] = trainSentence(window, textsize, textspace, phase, shape, breakType, screenYpixels)
-    Screen('TextFont',window,'Arial');
-    Screen('TextSize',window,textsize + 5);
-    black = BlackIndex(window);
-    white = WhiteIndex(window);
-    Screen('FillRect', window, black);
-    Screen('Flip', window);
-    quote = '''';
-    if strcmp(breakType, 'random')
-        verb = 'gleeb';
-    else
-        verb = 'blick';
-    end
-    
-    switch phase
-        case 1
-            DrawFormattedText(window, ['You' quote 're going to see the ' shape ' ' verb 'ing.'],...
-                'center', 'center', white, 70, 0, 0, textspace);
-        case 2
-            DrawFormattedText(window, ['Now you' quote 're going to see the '...
-                shape ' doing some more ' verb 'ing.'],...
-                'center', 'center', white, 70, 0, 0, textspace);
-        case 3
-            if strcmp(breakType, 'random')
-                DrawFormattedText(window, ['Last one for now. You' quote ...
-                    're going to see the ' shape ' ' verb 'ing.'],...
-                    'center', 'center', white, 70, 0, 0, textspace);
-            else
-                DrawFormattedText(window, ['Let' quote 's see that again. You' ...
-                    quote 're going to see the ' shape ' ' verb 'ing some more.'],...
-                    'center', 'center', white, 70, 0, 0, textspace);
-            end
-    end
-    
-    Screen('TextSize',window,textsize);
-    DrawFormattedText(window, 'Ready? Press spacebar.', 'center', ...
-        screenYpixels/2+50, white, 70, 0, 0, textspace);
-    Screen('Flip', window);
-    % Wait for keypress
-    RestrictKeysForKbCheck(KbName('space'));
-    KbStrokeWait;
-    Screen('Flip', window);
-    RestrictKeysForKbCheck([]);
-end
-
-function [] = testingSentence(window, textsize, textspace, breakType, screenYpixels)
-    Screen('TextFont',window,'Arial');
-    Screen('TextSize',window,textsize);
-    black = BlackIndex(window);
-    white = WhiteIndex(window);
-    Screen('FillRect', window, black);
-    Screen('Flip', window);
-    quote = '''';
-    if strcmp(breakType, 'random')
-        verb = 'gleeb';
-    else
-        verb = 'blick';
-    end
-    
-    DrawFormattedText(window, ['Now you' quote 're going to see pairs of '...
-        'videos, involving the star and a heart. For each pair, you are '...
-        'going to be asked:'], 'center', screenYpixels/2-(screenYpixels/5), white, 70, 0, 0, textspace);
-    
-    Screen('TextSize',window,textsize+15);
-    DrawFormattedText(window, ['Did the star ' verb ' more than the heart?'],...
-                'center', 'center', white, 70, 0, 0, textspace);
-    Screen('TextSize',window,textsize);
-    DrawFormattedText(window, 'Ready? Press spacebar.', 'center', ...
-        screenYpixels/2+(screenYpixels/5), white, 70, 0, 0, textspace);
-    Screen('Flip', window);
-    % Wait for keypress
-    RestrictKeysForKbCheck(KbName('space'));
-    KbStrokeWait;
-    Screen('Flip', window);
-    RestrictKeysForKbCheck([]);
-end
 
 %%%%%POINTS AND BREAKS FUNCTIONS%%%%%
 
@@ -649,6 +541,63 @@ function [Breaks] = makeBreaks(breakType, totalpoints, loops, minSpace)
     end
 end
 
+function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberOfFrames, Breaks)
+    nx = xpoints;
+    ny = ypoints;
+    halfLoop = floor(numberOfFrames/2);
+    totalpoints = length(xpoints);
+
+    petalnum = 0;
+
+    %In this process, I wind up copying things because I might back up to a
+    %different point, and I don't want my calculations to mess with each other.
+    %(like, if I change a point, I want the calculations for future points to
+    %be calculated from the static previous graph, and not from any changes I
+    %just made.
+
+    %So, I have a couple variables that are just copies of the point sets. It's
+    %important, I promise.
+
+    %Move to origin
+    for m = 1:totalpoints-1
+        if any(m==Breaks)
+            petalnum = petalnum+1;
+        end
+        nx(m) = xpoints(m) - xpoints(halfLoop + (numberOfFrames * petalnum))/2;
+        ny(m) = ypoints(m) - ypoints(halfLoop + (numberOfFrames * petalnum))/2;
+    end
+
+    %rotate
+    copy_nx = nx;
+    copy_ny = ny;
+    f = randi(360);
+
+    for m = 1:totalpoints-1
+        if any(m == Breaks)
+            f = randi(360);
+        end 
+        copy_nx(m) = nx(m)*cos(f) - ny(m)*sin(f);
+        copy_ny(m) = ny(m)*cos(f) + nx(m)*sin(f);
+    end
+
+    %push out based on tip direction
+    final_xpoints = copy_nx;
+    final_ypoints = copy_ny;
+    petalnum = 0;
+
+    for m = 1:totalpoints-1
+        if any(m == Breaks)
+            petalnum = petalnum + 1;
+        end
+        final_xpoints(m) = copy_nx(m) + (xpoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
+        final_ypoints(m) = copy_ny(m) + (ypoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
+    end
+%     final_xpoints = final_xpoints(1:length(final_xpoints-2));
+%     final_ypoints = final_ypoints(1:length(final_ypoints-2));
+
+end
+
+
 %%%%%%%%%
 %INPUT CHECKING FUNCTIONS
 %%%%%%%%%
@@ -689,8 +638,8 @@ function [subj] = subjcheck(subj)
 end
 
 function [cond] = condcheck(cond)
-    while ~strcmp(cond, 'm') && ~strcmp(cond, 'c')
-        cond = input('Condition must be m or c. Please enter m (mass) or c (count): ', 's');
+    while ~strcmp(cond, 'e') && ~strcmp(cond, 'o')
+        cond = input('Condition must be e or o. Please enter e (events) or o (objects): ', 's');
     end
 end
 
