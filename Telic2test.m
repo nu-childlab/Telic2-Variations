@@ -85,10 +85,12 @@ trial_list = pairs(shuff,:);
 breaklist = breaklist(shuff);
 displayTime = 3;
 
-trial_list = [4; 5];
-breaklist = {'equal'; 'random'};
-displayTime = 1;
 
+    trial_list = [4; 5];
+%     breaklist = {'equal'; 'random'};
+    breaklist = {'random';'random'};
+    displayTime = 1;
+cond = 'e';
 
 
 %%%%%%%Screen Prep
@@ -140,14 +142,9 @@ vbl = Screen('Flip', window);
 %%%%%%DATA FILES
 
 
-
 %%%%%Conditions and List Setup
 
-% if strcmp(cond,'e')
-%     blockList = {'events', 'objects'};
-% else
-%     blockList = {'objects', 'events'};
-% end
+
 
 % correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
 % anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
@@ -158,14 +155,13 @@ instructions(window, screenXpixels, screenYpixels, textsize, textspace)
 c = 1;
 
 
-% for condition = blockList
-%     if strcmp(condition,'events')
-%         events = 1;
-%     else
-%         events = 0;
-%     end
 condition = 'events';
-events=1;
+    if strcmp(condition,'events')
+        events = 1;
+    else
+        events = 0;
+    end
+    
 
     %testingSentence(window, textsize, textspace, breakType, screenYpixels)
 
@@ -194,15 +190,12 @@ events=1;
         end
         
     end
-    if c<2
-        breakScreen(window, textsize, textspace);
-    end
+
     c = c+1;
 
- %ending the block
+%ending the block
 %%%%%%Finishing and exiting
 
-finish(window, textsize, textspace)
 sca
 Priority(0);
 end
@@ -238,29 +231,30 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
 %     axis equal
 %     plot(xpoints, ypoints)
 %     sca
-%     
 %     error('test')
     pt = 1;
     waitframes = 1;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
-    while pt <= totalpoints-1
-        if any(pt == Breaks)% || pt == totalpoints-1
-            WaitSecs(breakTime);
+    while pt <= totalpoints
+        if ~any(pt == Breaks) && ~any(pt+1 == Breaks)
+            destRect = [xpoints(pt) - 128/2, ... %left
+                ypoints(pt) - 128/2, ... %top
+                xpoints(pt) + 128/2, ... %right
+                ypoints(pt) + 128/2]; %bottom
+
+            % Draw the shape to the screen
+            Screen('DrawTexture', window, imageTexture, [], destRect, 0);
+            Screen('DrawingFinished', window);
+            % Flip to the screen
+            vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
+            
         end
-        destRect = [xpoints(pt) - 128/2, ... %left
-            ypoints(pt) - 128/2, ... %top
-            xpoints(pt) + 128/2, ... %right
-            ypoints(pt) + 128/2]; %bottom
-        
-        % Draw the shape to the screen
-        Screen('DrawTexture', window, imageTexture, [], destRect, 0);
-        Screen('DrawingFinished', window);
-        % Flip to the screen
-        vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
         pt = pt + 1;
         %If the current point is a break point, pause
-        
+        if any(pt == Breaks)
+            WaitSecs(breakTime);
+        end
         
     end
     Screen('FillRect', window, black);
@@ -453,13 +447,15 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
     %smoothframes designates a few frames to smooth this out. It uses fewer
     %frames for the ellipse, and instead spends a few frames going from the
     %end of the ellipse to the origin.
+    smoothframes = 0;
+    doublesmooth = smoothframes*2;
     xpoints = [];
     ypoints = [];
     majorAxis = 2;
     minorAxis = 1;
     centerX = 0;
     centerY = 0;
-    theta = linspace(0,2*pi,numberOfFrames);
+    theta = linspace(0,2*pi,numberOfFrames-smoothframes);
     %The orientation starts at 0, and ends at 360-360/numberOfLoops
     %This is to it doesn't make a complete circle, which would have two
     %overlapping ellipses.
@@ -485,9 +481,9 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
         %shuffle it around so it does. (this is important I promise)  
         %It also adds in some extra frames to smooth the transition between
         %ellipses
-        start = round((numberOfFrames)/4);
-        x3 = [x2(start:numberOfFrames) x2(2:start-1)];
-        y3 = [y2(start:numberOfFrames) y2(2:start-1)];
+        start = round((numberOfFrames-smoothframes)/4);
+        x3 = [x2(start:numberOfFrames-smoothframes) x2(2:start) linspace(x2(start),0,smoothframes)];
+        y3 = [y2(start:numberOfFrames-smoothframes) y2(2:start) linspace(y2(start),0,smoothframes)];
         %Finally, accumulate the points in full points arrays for easy graphing
         %and drawing
         xpoints = [xpoints x3];
@@ -498,7 +494,7 @@ end
 function [Breaks] = makeBreaks(breakType, totalpoints, loops, minSpace)
     if strcmp(breakType, 'equal')
         %Breaks = 1 : totalpoints/loops : totalpoints;
-        Breaks = linspace(totalpoints/loops+1, totalpoints+1, loops);
+        Breaks = linspace(totalpoints/loops, totalpoints, loops);
 
     elseif strcmp(breakType, 'random')
         %tbh I found this on stackoverflow and have no idea how it works
@@ -592,6 +588,8 @@ function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
     y_temp = [];
     section_count = 1;
     for i = 1:length(xpoints)
+        x_temp = [x_temp xpoints(i)];
+        y_temp = [y_temp ypoints(i)];
         if any(i == Breaks)
             x_sections{section_count} = x_temp;
             y_sections{section_count} = y_temp;
@@ -599,8 +597,6 @@ function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
             x_temp = [];
             y_temp = [];
         end
-        x_temp = [x_temp xpoints(i)];
-        y_temp = [y_temp ypoints(i)];
     end
     x_sections{section_count} = x_temp;
     y_sections{section_count} = y_temp;

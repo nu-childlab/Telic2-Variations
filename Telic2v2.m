@@ -597,6 +597,37 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberO
 
 end
 
+function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
+    %scramblerows = matrix(randperm(length(matrix)),:)
+    x_sections = {};
+    x_temp = [];
+    y_sections = {};
+    y_temp = [];
+    section_count = 1;
+    for i = 1:length(xpoints)
+        if any(i == Breaks)
+            x_sections{section_count} = x_temp;
+            y_sections{section_count} = y_temp;
+            section_count = section_count + 1;
+            x_temp = [];
+            y_temp = [];
+        end
+        x_temp = [x_temp xpoints(i)];
+        y_temp = [y_temp ypoints(i)];
+    end
+    x_sections{section_count} = x_temp;
+    y_sections{section_count} = y_temp;
+    shuff = randperm(length(x_sections));
+    x_sections = x_sections(shuff);
+    y_sections = y_sections(shuff);
+    new_xpoints = [];
+    new_ypoints = [];
+    for sect = 1:length(x_sections)
+       new_xpoints = [new_xpoints x_sections{sect}];
+       new_ypoints = [new_ypoints y_sections{sect}];
+    end
+end
+
 
 %%%%%%%%%
 %INPUT CHECKING FUNCTIONS
