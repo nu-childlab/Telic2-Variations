@@ -1,4 +1,4 @@
-function [] = Telic2v2()
+function [] = Telic2test()
 
 %%%%%%FUNCTION DESCRIPTION
 %Telic2v2 is a Telic experiment where the events follow broken-up paths
@@ -13,11 +13,6 @@ screens = Screen('Screens');
 screenNumber = max(screens);
 rng('shuffle');
 KbName('UnifyKeyNames');
-
-cond=input('Condition e or o: ', 's');
-cond = condcheck(cond);
-subj=input('Subject Number: ', 's');
-subj = subjcheck(subj);
 
 
 %%%%%%%%
@@ -51,7 +46,7 @@ framesPerLoop = round(loopTime / ifi) + 1;
 minSpace = 10;
 %the minimum possible number of frames between steps
 
-breakTime = .25;
+breakTime = 1;
 %The number of seconds for each pause
 
 crossTime = 1;
@@ -90,11 +85,10 @@ trial_list = pairs(shuff,:);
 breaklist = breaklist(shuff);
 displayTime = 3;
 
-if strcmp(subj, 's999')
-    trial_list = [4; 5];
-    breaklist = {'equal'; 'random'};
-    displayTime = 1;
-end
+trial_list = [4; 5];
+breaklist = {'equal'; 'random'};
+displayTime = 1;
+
 
 
 %%%%%%%Screen Prep
@@ -145,25 +139,15 @@ vbl = Screen('Flip', window);
 
 %%%%%%DATA FILES
 
-initprint = 0;
-if ~(exist('Data/Wroclaw/TelicWroclawdata.csv', 'file') == 2)
-    initprint = 1;
-end
-dataFile = fopen('Data/2v2/Telic2v2data.csv', 'a');
-subjFile = fopen(['Data/2v2/Telic2v2_' subj '.csv'],'a');
-if initprint
-    fprintf(dataFile, 'subject,time,condition,break,loops,response\n');
-end
-fprintf(subjFile, 'subject,time,condition,break,loops,response\n');
-lineFormat = '%s,%6.2f,%s,%s,%d,%s\n';
+
 
 %%%%%Conditions and List Setup
 
-if strcmp(cond,'e')
-    blockList = {'events', 'objects'};
-else
-    blockList = {'objects', 'events'};
-end
+% if strcmp(cond,'e')
+%     blockList = {'events', 'objects'};
+% else
+%     blockList = {'objects', 'events'};
+% end
 
 % correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
 % anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
@@ -174,13 +158,14 @@ instructions(window, screenXpixels, screenYpixels, textsize, textspace)
 c = 1;
 
 
-for condition = blockList
-    if strcmp(condition,'events')
-        events = 1;
-    else
-        events = 0;
-    end
-    
+% for condition = blockList
+%     if strcmp(condition,'events')
+%         events = 1;
+%     else
+%         events = 0;
+%     end
+condition = 'events';
+events=1;
 
     %testingSentence(window, textsize, textspace, breakType, screenYpixels)
 
@@ -208,16 +193,13 @@ for condition = blockList
                 pauseTime, breakType, screenNumber, displayTime)
         end
         
-        [response, time] = getResponse(window, screenXpixels, screenYpixels, textsize, condition{1});
-        fprintf(dataFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
-        fprintf(subjFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
     end
     if c<2
         breakScreen(window, textsize, textspace);
     end
     c = c+1;
 
-end %ending the block
+ %ending the block
 %%%%%%Finishing and exiting
 
 finish(window, textsize, textspace)
@@ -252,11 +234,20 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
+    [xpoints, ypoints] = scrambleOrder(xpoints, ypoints, Breaks);
+%     axis equal
+%     plot(xpoints, ypoints)
+%     sca
+%     
+%     error('test')
     pt = 1;
     waitframes = 1;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
     while pt <= totalpoints-1
+        if any(pt == Breaks)% || pt == totalpoints-1
+            WaitSecs(breakTime);
+        end
         destRect = [xpoints(pt) - 128/2, ... %left
             ypoints(pt) - 128/2, ... %top
             xpoints(pt) + 128/2, ... %right
@@ -269,9 +260,7 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
         vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
         pt = pt + 1;
         %If the current point is a break point, pause
-        if any(pt == Breaks) || pt == totalpoints-1
-            WaitSecs(breakTime);
-        end
+        
         
     end
     Screen('FillRect', window, black);
@@ -464,15 +453,13 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
     %smoothframes designates a few frames to smooth this out. It uses fewer
     %frames for the ellipse, and instead spends a few frames going from the
     %end of the ellipse to the origin.
-    smoothframes = 0;
-    doublesmooth = smoothframes*2;
     xpoints = [];
     ypoints = [];
     majorAxis = 2;
     minorAxis = 1;
     centerX = 0;
     centerY = 0;
-    theta = linspace(0,2*pi,numberOfFrames-smoothframes);
+    theta = linspace(0,2*pi,numberOfFrames);
     %The orientation starts at 0, and ends at 360-360/numberOfLoops
     %This is to it doesn't make a complete circle, which would have two
     %overlapping ellipses.
@@ -498,9 +485,9 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
         %shuffle it around so it does. (this is important I promise)  
         %It also adds in some extra frames to smooth the transition between
         %ellipses
-        start = round((numberOfFrames-smoothframes)/4);
-        x3 = [x2(start:numberOfFrames-smoothframes) x2(2:start) linspace(x2(start),0,smoothframes)];
-        y3 = [y2(start:numberOfFrames-smoothframes) y2(2:start) linspace(y2(start),0,smoothframes)];
+        start = round((numberOfFrames)/4);
+        x3 = [x2(start:numberOfFrames) x2(2:start-1)];
+        y3 = [y2(start:numberOfFrames) y2(2:start-1)];
         %Finally, accumulate the points in full points arrays for easy graphing
         %and drawing
         xpoints = [xpoints x3];
@@ -595,6 +582,37 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberO
 %     final_xpoints = final_xpoints(1:length(final_xpoints-2));
 %     final_ypoints = final_ypoints(1:length(final_ypoints-2));
 
+end
+
+function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
+    %scramblerows = matrix(randperm(length(matrix)),:)
+    x_sections = {};
+    x_temp = [];
+    y_sections = {};
+    y_temp = [];
+    section_count = 1;
+    for i = 1:length(xpoints)
+        if any(i == Breaks)
+            x_sections{section_count} = x_temp;
+            y_sections{section_count} = y_temp;
+            section_count = section_count + 1;
+            x_temp = [];
+            y_temp = [];
+        end
+        x_temp = [x_temp xpoints(i)];
+        y_temp = [y_temp ypoints(i)];
+    end
+    x_sections{section_count} = x_temp;
+    y_sections{section_count} = y_temp;
+    shuff = randperm(length(x_sections));
+    x_sections = x_sections(shuff);
+    y_sections = y_sections(shuff);
+    new_xpoints = [];
+    new_ypoints = [];
+    for sect = 1:length(x_sections)
+       new_xpoints = [new_xpoints x_sections{sect}];
+       new_ypoints = [new_ypoints y_sections{sect}];
+    end
 end
 
 
