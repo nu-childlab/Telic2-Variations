@@ -87,8 +87,7 @@ displayTime = 3;
 
 
     trial_list = [4; 5];
-%     breaklist = {'equal'; 'random'};
-    breaklist = {'random';'random'};
+    breaklist = {'equal'; 'random'};
     displayTime = 1;
 cond = 'e';
 
@@ -227,17 +226,14 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
-    [xpoints, ypoints] = scrambleOrder(xpoints, ypoints, Breaks);
-%     axis equal
-%     plot(xpoints, ypoints)
-%     sca
-%     error('test')
+    [xpoints, ypoints, Breaks] = scrambleOrder(xpoints, ypoints, Breaks);
+    
     pt = 1;
     waitframes = 1;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
     while pt <= totalpoints
-        if ~any(pt == Breaks) && ~any(pt+1 == Breaks)
+        if ~any(pt == Breaks)%&& ~any(pt+1 == Breaks)
             destRect = [xpoints(pt) - 128/2, ... %left
                 ypoints(pt) - 128/2, ... %top
                 xpoints(pt) + 128/2, ... %right
@@ -498,10 +494,10 @@ function [Breaks] = makeBreaks(breakType, totalpoints, loops, minSpace)
 
     elseif strcmp(breakType, 'random')
         %tbh I found this on stackoverflow and have no idea how it works
-        %lol
+        %http://stackoverflow.com/questions/31971344/generating-random-sequence-with-minimum-distance-between-elements-matlab/31977095#31977095
         if loops >1
             numberOfBreaks = loops - 1;
-            E = totalpoints-(numberOfBreaks-1)*minSpace;
+            E = (totalpoints-20)-(numberOfBreaks-1)*minSpace;
 
             ro = rand(numberOfBreaks+1,1);
             rn = E*ro(1:numberOfBreaks)/sum(ro);
@@ -580,7 +576,7 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberO
 
 end
 
-function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
+function [new_xpoints, new_ypoints, new_breaks] = scrambleOrder(xpoints, ypoints, Breaks)
     %scramblerows = matrix(randperm(length(matrix)),:)
     x_sections = {};
     x_temp = [];
@@ -598,16 +594,19 @@ function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
             y_temp = [];
         end
     end
-    x_sections{section_count} = x_temp;
-    y_sections{section_count} = y_temp;
+
     shuff = randperm(length(x_sections));
     x_sections = x_sections(shuff);
     y_sections = y_sections(shuff);
     new_xpoints = [];
     new_ypoints = [];
+    new_breaks = [];
+    break_tally = 0;
     for sect = 1:length(x_sections)
-       new_xpoints = [new_xpoints x_sections{sect}];
-       new_ypoints = [new_ypoints y_sections{sect}];
+        break_tally = break_tally + length(x_sections{sect});
+        new_breaks = [new_breaks break_tally];
+        new_xpoints = [new_xpoints x_sections{sect}];
+        new_ypoints = [new_ypoints y_sections{sect}];
     end
 end
 

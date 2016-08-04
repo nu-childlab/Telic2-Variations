@@ -238,7 +238,6 @@ end
 
 
 %%%%%ANIMATION FUNCTION%%%%%
-
 function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     minSpace, scale, xCenter, yCenter, window, ...
     pauseTime, breakType, breakTime, screenNumber, imageTexture, ...
@@ -252,24 +251,29 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
+    [xpoints, ypoints, Breaks] = scrambleOrder(xpoints, ypoints, Breaks);
+    
     pt = 1;
     waitframes = 1;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
-    while pt <= totalpoints-1
-        destRect = [xpoints(pt) - 128/2, ... %left
-            ypoints(pt) - 128/2, ... %top
-            xpoints(pt) + 128/2, ... %right
-            ypoints(pt) + 128/2]; %bottom
-        
-        % Draw the shape to the screen
-        Screen('DrawTexture', window, imageTexture, [], destRect, 0);
-        Screen('DrawingFinished', window);
-        % Flip to the screen
-        vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
+    while pt <= totalpoints
+        if ~any(pt == Breaks)%&& ~any(pt+1 == Breaks)
+            destRect = [xpoints(pt) - 128/2, ... %left
+                ypoints(pt) - 128/2, ... %top
+                xpoints(pt) + 128/2, ... %right
+                ypoints(pt) + 128/2]; %bottom
+
+            % Draw the shape to the screen
+            Screen('DrawTexture', window, imageTexture, [], destRect, 0);
+            Screen('DrawingFinished', window);
+            % Flip to the screen
+            vbl  = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
+            
+        end
         pt = pt + 1;
         %If the current point is a break point, pause
-        if any(pt == Breaks) || pt == totalpoints-1
+        if any(pt == Breaks)
             WaitSecs(breakTime);
         end
         
@@ -464,15 +468,16 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
     %smoothframes designates a few frames to smooth this out. It uses fewer
     %frames for the ellipse, and instead spends a few frames going from the
     %end of the ellipse to the origin.
-    smoothframes = 0;
-    doublesmooth = smoothframes*2;
     xpoints = [];
     ypoints = [];
     majorAxis = 2;
     minorAxis = 1;
     centerX = 0;
     centerY = 0;
-    theta = linspace(0,2*pi,numberOfFrames-smoothframes);
+    %I want to add a number of frames equal to the number of loops, since I skip
+    %that many frames later in the animation to prevent the star from
+    %flickering when I randomize the order.
+    theta = linspace(0,2*pi,numberOfFrames);
     %The orientation starts at 0, and ends at 360-360/numberOfLoops
     %This is to it doesn't make a complete circle, which would have two
     %overlapping ellipses.
@@ -498,9 +503,9 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
         %shuffle it around so it does. (this is important I promise)  
         %It also adds in some extra frames to smooth the transition between
         %ellipses
-        start = round((numberOfFrames-smoothframes)/4);
-        x3 = [x2(start:numberOfFrames-smoothframes) x2(2:start) linspace(x2(start),0,smoothframes)];
-        y3 = [y2(start:numberOfFrames-smoothframes) y2(2:start) linspace(y2(start),0,smoothframes)];
+        start = round((numberOfFrames)/4);
+        x3 = [x2(start:numberOfFrames) x2(2:start)];
+        y3 = [y2(start:numberOfFrames) y2(2:start)];
         %Finally, accumulate the points in full points arrays for easy graphing
         %and drawing
         xpoints = [xpoints x3];
@@ -511,14 +516,17 @@ end
 function [Breaks] = makeBreaks(breakType, totalpoints, loops, minSpace)
     if strcmp(breakType, 'equal')
         %Breaks = 1 : totalpoints/loops : totalpoints;
-        Breaks = linspace(totalpoints/loops+1, totalpoints+1, loops);
+        Breaks = linspace(totalpoints/loops, totalpoints+1, loops);
+        Breaks = arrayfun(@(x) round(x),Breaks);
 
     elseif strcmp(breakType, 'random')
         %tbh I found this on stackoverflow and have no idea how it works
-        %lol
+        %http://stackoverflow.com/questions/31971344/generating-random-sequence-with-minimum-distance-between-elements-matlab/31977095#31977095
         if loops >1
             numberOfBreaks = loops - 1;
-            E = totalpoints-(numberOfBreaks-1)*minSpace;
+            %The -10 accounts for some distance away from the last point,
+            %which I add on separately.
+            E = (totalpoints-10)-(numberOfBreaks-1)*minSpace;
 
             ro = rand(numberOfBreaks+1,1);
             rn = E*ro(1:numberOfBreaks)/sum(ro);
@@ -529,9 +537,9 @@ function [Breaks] = makeBreaks(breakType, totalpoints, loops, minSpace)
 
             Breaks = reshape(Breaks, 1, length(Breaks));
             Breaks = arrayfun(@(x) round(x),Breaks);
-            Breaks = [Breaks totalpoints];
+            Breaks = [Breaks totalpoints+1];
         else
-            Breaks = [totalpoints];
+            Breaks = [totalpoints+1];
         end
         %I'm adding one break on at the end, otherwise I'll end up with
         %more "pieces" than in the equal condition.
@@ -597,7 +605,7 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberO
 
 end
 
-function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
+function [new_xpoints, new_ypoints, new_breaks] = scrambleOrder(xpoints, ypoints, Breaks)
     %scramblerows = matrix(randperm(length(matrix)),:)
     x_sections = {};
     x_temp = [];
@@ -605,6 +613,8 @@ function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
     y_temp = [];
     section_count = 1;
     for i = 1:length(xpoints)
+        x_temp = [x_temp xpoints(i)];
+        y_temp = [y_temp ypoints(i)];
         if any(i == Breaks)
             x_sections{section_count} = x_temp;
             y_sections{section_count} = y_temp;
@@ -612,8 +622,6 @@ function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
             x_temp = [];
             y_temp = [];
         end
-        x_temp = [x_temp xpoints(i)];
-        y_temp = [y_temp ypoints(i)];
     end
     x_sections{section_count} = x_temp;
     y_sections{section_count} = y_temp;
@@ -622,9 +630,13 @@ function [new_xpoints, new_ypoints] = scrambleOrder(xpoints, ypoints, Breaks)
     y_sections = y_sections(shuff);
     new_xpoints = [];
     new_ypoints = [];
+    new_breaks = [];
+    break_tally = 0;
     for sect = 1:length(x_sections)
-       new_xpoints = [new_xpoints x_sections{sect}];
-       new_ypoints = [new_ypoints y_sections{sect}];
+        break_tally = break_tally + length(x_sections{sect});
+        new_breaks = [new_breaks break_tally];
+        new_xpoints = [new_xpoints x_sections{sect}];
+        new_ypoints = [new_ypoints y_sections{sect}];
     end
 end
 
