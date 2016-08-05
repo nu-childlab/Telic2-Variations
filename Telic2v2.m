@@ -121,24 +121,6 @@ end
 % Make the image into a texture
 starTexture = Screen('MakeTexture', window, imagename);
 
-theImageLocation = 'heart.png';
-[imagename, ~, alpha] = imread(theImageLocation);
-imagename(:,:,4) = alpha(:,:);
-
-% Get the size of the image
-[s1, s2, ~] = size(imagename);
-
-% Here we check if the image is too big to fit on the screen and abort if
-% it is. See ImageRescaleDemo to see how to rescale an image.
-if s1 > screenYpixels || s2 > screenYpixels
-    disp('ERROR! Image is too big to fit on the screen');
-    sca;
-    return;
-end
-
-% Make the image into a texture
-heartTexture = Screen('MakeTexture', window, imagename);
-
 scale = screenYpixels / 10;%previously 15
 
 vbl = Screen('Flip', window);
@@ -170,9 +152,9 @@ end
 
 %%%%%%RUNNING
 
-instructions(window, screenXpixels, screenYpixels, textsize, textspace)
-c = 1;
+instructions(window, screenXpixels, screenYpixels, textsize, textspace);
 
+c = 1;
 
 for condition = blockList
     if strcmp(condition,'events')
@@ -326,18 +308,18 @@ function [] = instructions(window, screenXpixels, screenYpixels, textsize, texts
         'You will be able to indicate your preference using the '...
         quote 'f' quote ' and ' quote, 'j'  quote ' keys.'];
 
-    DrawFormattedText(window, intro, 'center', 30, textcolor, 70, 0, 0, textspace);
+    DrawFormattedText(window, intro, 'center', screenYpixels/2 - screenYpixels/3, textcolor, 70, 0, 0, textspace);
     Screen('TextSize',window,textsize + 4);
     DrawFormattedText(window, ['Press ' quote 'f' quote ' if you prefer \n'...
-        'the sentence on the left.'],screenXpixels/3-250, 'center', textcolor, 70);
+        'the sentence on the left.'],screenXpixels/2 - screenXpixels/3, 'center', textcolor, 70);
     DrawFormattedText(window, ['Press ' quote 'j' quote ' if you prefer \n'...
-        'the sentence on the right.'],2*screenXpixels/3-120, 'center', textcolor, 70);
+        'the sentence on the right.'],screenXpixels/2 + screenXpixels/6, 'center', textcolor, 70);
     Screen('TextSize',window,textsize);
     intro2 = ['Please indicate to the experimenter if you have any questions, '...
         'or are ready to begin the experiment. \n When the experimenter has '...
         'left the room, you may press spacebar to begin.'];
     
-    DrawFormattedText(window, intro2, 'center', 4*screenYpixels/5, textcolor, 70, 0, 0, textspace);
+    DrawFormattedText(window, intro2, 'center', 2*screenYpixels/3, textcolor, 70, 0, 0, textspace);
     Screen('Flip', window);
     RestrictKeysForKbCheck(KbName('space'));
     KbStrokeWait;
@@ -403,14 +385,14 @@ function [response, time] = getResponse(window, screenXpixels, screenYpixels, te
     DrawFormattedText(window, question, 'center', screenYpixels/3, textcolor, 70);
     
     Screen('TextSize',window,textsize + 4);
-    DrawFormattedText(window, optf, screenXpixels/3-250, 'center', textcolor, 70);
-    DrawFormattedText(window, optj, 2*screenXpixels/3-120, 'center', textcolor, 70);
+    DrawFormattedText(window, optf, screenXpixels/2 - screenXpixels/3, 'center', textcolor, 70);
+    DrawFormattedText(window, optj, screenXpixels/2 + screenXpixels/9, 'center', textcolor, 70);
     
     Screen('TextSize',window,textsize);
     DrawFormattedText(window, ['Press ' quote 'f' quote],...
-        screenXpixels/3-100, screenYpixels/2+30, textcolor, 70);
+        screenXpixels/2 - screenXpixels/3 + 200, screenYpixels/2+30, textcolor, 70);
     DrawFormattedText(window, ['Press ' quote 'j' quote],...
-        2*screenXpixels/3+20, screenYpixels/2+30, textcolor, 70);
+        screenXpixels/2 + screenXpixels/9 + 200, screenYpixels/2+30, textcolor, 70);
         
     Screen('Flip',window);
 
