@@ -128,7 +128,7 @@ vbl = Screen('Flip', window);
 %%%%%%DATA FILES
 
 initprint = 0;
-if ~(exist('Data/Wroclaw/TelicWroclawdata.csv', 'file') == 2)
+if ~(exist('Data/2v2/Telic2v2data.csv', 'file') == 2)
     initprint = 1;
 end
 dataFile = fopen('Data/2v2/Telic2v2data.csv', 'a');
