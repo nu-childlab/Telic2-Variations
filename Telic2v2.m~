@@ -5,7 +5,7 @@ function [] = Telic2v2()
 %It is meant for standalone use
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-Screen('Preference', 'SkipSyncTests', 1);
+Screen('Preference', 'SkipSyncTests', 0);
 close all;
 sca
 PsychDefaultSetup(2);
@@ -91,8 +91,8 @@ breaklist = breaklist(shuff);
 displayTime = 3;
 
 if strcmp(subj, 's999')
-    trial_list = [4; 4; 5; 5];
-    breaklist = {'equal'; 'random';'equal'; 'random'};
+    trial_list = [4; 5];
+    breaklist = {'equal'; 'random'};
     displayTime = 1;
 end
 
@@ -271,16 +271,14 @@ function [] = displayObjectLoops(numberOfLoops, framesPerLoop, ...
     pauseTime, breakType, screenNumber, displayTime)
 
     %I have a set number of frames for the display objects, because adding
-    %more frames makes the drawings smoother and, unlike in events, has no
-    %effect on the time.
-    dispframes = 200;
+    %more frames makes the raw
     white = WhiteIndex(screenNumber);
     black = BlackIndex(screenNumber);
     grey = white/2;
-    [xpoints, ypoints] = getPoints(numberOfLoops, dispframes);
+    [xpoints, ypoints] = getPoints(numberOfLoops, framesPerLoop);
     totalpoints = numel(xpoints);
     Breaks = makeBreaks(breakType, totalpoints, numberOfLoops, minSpace);
-    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, dispframes, Breaks);
+    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
     Screen('FillRect', window, grey);

@@ -57,7 +57,7 @@
 %%%%%%%NEXT
 %I'm gonna work on the for-loop point creation
 numberOfLoops = 5;
-numberOfFrames = 75;
+numberOfFrames = 200;
 xpoints = [];
 ypoints = [];
 majorAxis = 2;
@@ -180,10 +180,11 @@ for m = 1:totalpoints-1
 end
 
 
+testx = final_xpoints*144 +1280;
+testy = final_ypoints*144 +720;
 
 
 
-
-plot(xpoints, ypoints, final_xpoints, final_ypoints, 'r')
+plot(xpoints, ypoints, final_xpoints, final_ypoints, 'r', testx, testy, 'g')
 axis equal
 grid
