@@ -1,8 +1,8 @@
 function [] = Telic2test()
 
 %%%%%%FUNCTION DESCRIPTION
-%Telic2test is a Telic experiment where the events follow broken-up paths
-%It is not meant for standalone use
+%Telic2v2 is a Telic experiment where the events follow broken-up paths
+%It is meant for standalone use
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
 Screen('Preference', 'SkipSyncTests', 0);
@@ -116,9 +116,25 @@ end
 % Make the image into a texture
 starTexture = Screen('MakeTexture', window, imagename);
 
-scale = screenYpixels / 10%previously 15
-disp(xCenter)
-disp(yCenter)
+theImageLocation = 'heart.png';
+[imagename, ~, alpha] = imread(theImageLocation);
+imagename(:,:,4) = alpha(:,:);
+
+% Get the size of the image
+[s1, s2, ~] = size(imagename);
+
+% Here we check if the image is too big to fit on the screen and abort if
+% it is. See ImageRescaleDemo to see how to rescale an image.
+if s1 > screenYpixels || s2 > screenYpixels
+    disp('ERROR! Image is too big to fit on the screen');
+    sca;
+    return;
+end
+
+% Make the image into a texture
+heartTexture = Screen('MakeTexture', window, imagename);
+
+scale = screenYpixels / 10;%previously 15
 
 vbl = Screen('Flip', window);
 
@@ -138,7 +154,7 @@ instructions(window, screenXpixels, screenYpixels, textsize, textspace)
 c = 1;
 
 
-condition = 'objects';
+condition = 'events';
     if strcmp(condition,'events')
         events = 1;
     else
@@ -246,16 +262,15 @@ end
 function [] = displayObjectLoops(numberOfLoops, framesPerLoop, ...
     minSpace, scale, xCenter, yCenter, window, ...
     pauseTime, breakType, screenNumber, displayTime)
-    dispframes = 200
     white = WhiteIndex(screenNumber);
     black = BlackIndex(screenNumber);
     grey = white/2;
-    [xpoints, ypoints] = getPoints(numberOfLoops, dispframes);
+    [xpoints, ypoints] = getPoints(numberOfLoops, framesPerLoop);
     totalpoints = numel(xpoints);
     Breaks = makeBreaks(breakType, totalpoints, numberOfLoops, minSpace);
-    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, dispframes, Breaks);
-    xpoints = xpoints * scale + xCenter;
-    ypoints = ypoints * scale + yCenter;
+    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks);
+    xpoints = (xpoints .* scale) + xCenter;
+    ypoints = (ypoints .* scale) + yCenter;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
     for p = 1:totalpoints - 2
@@ -428,13 +443,15 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
     %smoothframes designates a few frames to smooth this out. It uses fewer
     %frames for the ellipse, and instead spends a few frames going from the
     %end of the ellipse to the origin.
+    smoothframes = 0;
+    doublesmooth = smoothframes*2;
     xpoints = [];
     ypoints = [];
     majorAxis = 2;
     minorAxis = 1;
     centerX = 0;
     centerY = 0;
-    theta = linspace(0,2*pi,numberOfFrames);
+    theta = linspace(0,2*pi,numberOfFrames-smoothframes);
     %The orientation starts at 0, and ends at 360-360/numberOfLoops
     %This is to it doesn't make a complete circle, which would have two
     %overlapping ellipses.
@@ -460,9 +477,9 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
         %shuffle it around so it does. (this is important I promise)  
         %It also adds in some extra frames to smooth the transition between
         %ellipses
-        start = round((numberOfFrames)/4);
-        x3 = [x2(start:numberOfFrames) x2(1:start)];
-        y3 = [y2(start:numberOfFrames) y2(1:start)];
+        start = round((numberOfFrames-smoothframes)/4);
+        x3 = [x2(start:numberOfFrames-smoothframes) x2(2:start) linspace(x2(start),0,smoothframes)];
+        y3 = [y2(start:numberOfFrames-smoothframes) y2(2:start) linspace(y2(start),0,smoothframes)];
         %Finally, accumulate the points in full points arrays for easy graphing
         %and drawing
         xpoints = [xpoints x3];
