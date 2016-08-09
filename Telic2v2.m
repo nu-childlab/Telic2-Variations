@@ -581,8 +581,8 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberO
         if any(m == Breaks)
             petalnum = petalnum + 1;
         end
-        final_xpoints(m) = copy_nx(m) + (xpoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
-        final_ypoints(m) = copy_ny(m) + (ypoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
+        final_xpoints(m) = copy_nx(m) + (xpoints(halfLoop + (numberOfFrames * petalnum)) *1.3);
+        final_ypoints(m) = copy_ny(m) + (ypoints(halfLoop + (numberOfFrames * petalnum)) *1.3);
     end
 %     final_xpoints = final_xpoints(1:length(final_xpoints-2));
 %     final_ypoints = final_ypoints(1:length(final_ypoints-2));
