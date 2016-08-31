@@ -57,7 +57,7 @@
 %%%%%%%NEXT
 %I'm gonna work on the for-loop point creation
 numberOfLoops = 5;
-numberOfFrames = 75;
+numberOfFrames = 200;
 xpoints = [];
 ypoints = [];
 majorAxis = 2;
@@ -103,9 +103,6 @@ for i = 1:numberOfLoops
     ypoints = [ypoints y3];
 end
 
-disp(numberOfFrames)
-disp(length(xpoints))
-
 % plot(xpoints, ypoints)
 % axis equal
 % grid
@@ -114,26 +111,46 @@ disp(length(xpoints))
 %%%%%ROTATION
 minSpace = 10;
 
-nx = xpoints;
-ny = ypoints;
+
 halfLoop = floor(numberOfFrames/2);
 totalpoints = length(xpoints);
-%Breaks = linspace(totalpoints/numberOfLoops+1, totalpoints+1, numberOfLoops);
-numberOfBreaks = numberOfLoops - 1;
-E = totalpoints-(numberOfBreaks-2)*minSpace;
+% %Breaks = linspace(totalpoints/numberOfLoops+1, totalpoints+1, numberOfLoops);
+% numberOfBreaks = numberOfLoops - 1;
+% E = totalpoints-(numberOfBreaks-2)*minSpace;
+% 
+% ro = rand(numberOfBreaks+1,1);
+% rn = E*ro(1:numberOfBreaks)/sum(ro);
+% 
+% s = minSpace*ones(numberOfBreaks,1)+rn;
+% 
+% Breaks=cumsum(s)-1;
+% 
+% Breaks = reshape(Breaks, 1, length(Breaks));
+% Breaks = arrayfun(@(x) round(x),Breaks);
+% Breaks = [Breaks totalpoints];
 
-ro = rand(numberOfBreaks+1,1);
-rn = E*ro(1:numberOfBreaks)/sum(ro);
 
-s = minSpace*ones(numberOfBreaks,1)+rn;
-
-Breaks=cumsum(s)-1;
-
-Breaks = reshape(Breaks, 1, length(Breaks));
+start = randi(totalpoints);
+new_xpoints = [xpoints(start:totalpoints) xpoints(1:start)];
+new_ypoints = [ypoints(start:totalpoints) ypoints(1:start)];
+Breaks = linspace(totalpoints/numberOfLoops, totalpoints+1, numberOfLoops);
 Breaks = arrayfun(@(x) round(x),Breaks);
-Breaks = [Breaks totalpoints];
+
+xx = new_xpoints;
+yy = new_ypoints;
+nx = new_xpoints;
+ny = new_ypoints;
 
 petalnum = 0;
+
+for b=Breaks
+   if start < b
+       break
+   else
+       petalnum = petalnum + 1;
+   end
+end
+
 
 %In this process, I wind up copying things because I might back up to a
 %different point, and I don't want my calculations to mess with each other.
@@ -148,9 +165,19 @@ petalnum = 0;
 for m = 1:totalpoints-1
     if any(m==Breaks)
         petalnum = petalnum+1;
+        if petalnum >= numberOfLoops
+            petalnum = 0;
+        end
     end
-    nx(m) = xpoints(m) - xpoints(halfLoop + (numberOfFrames * petalnum))/2;
-    ny(m) = ypoints(m) - ypoints(halfLoop + (numberOfFrames * petalnum))/2;
+    if m == 100
+        disp(nx(m))
+        disp(xpoints(halfLoop + (numberOfFrames * petalnum))/2)
+    end
+    nx(m) = xx(m) - xpoints(halfLoop + (numberOfFrames * petalnum))/2;
+    ny(m) = yy(m) - ypoints(halfLoop + (numberOfFrames * petalnum))/2;
+    if m == 100
+        disp(nx(m))
+    end
 end
 
 %rotate
@@ -171,19 +198,37 @@ final_xpoints = copy_nx;
 final_ypoints = copy_ny;
 petalnum = 0;
 
+for b=Breaks
+   if start < b
+       break
+   else
+       petalnum = petalnum + 1;
+   end
+end
+
 for m = 1:totalpoints-1
     if any(m == Breaks)
         petalnum = petalnum + 1;
+        if petalnum >= numberOfLoops
+            petalnum = 0;
+        end
     end
-    final_xpoints(m) = copy_nx(m) + (xpoints(halfLoop + (numberOfFrames * petalnum)) *2);
-    final_ypoints(m) = copy_ny(m) + (ypoints(halfLoop + (numberOfFrames * petalnum)) *2);
+
+    final_xpoints(m) = copy_nx(m) + (xpoints(halfLoop + (numberOfFrames * petalnum)) *1);
+    final_ypoints(m) = copy_ny(m) + (ypoints(halfLoop + (numberOfFrames * petalnum)) *1);
 end
 
+% scale=144;
+% xCenter = 1280;
+% yCenter = 720;
 
+% xpoints = (xpoints .* scale) + xCenter;
+% ypoints = (ypoints .* scale) + yCenter;
+% final_xpoints = (final_xpoints .* scale) + xCenter;
+% final_ypoints = (final_ypoints .* scale) + yCenter;
 
-
-
-
-plot(xpoints, ypoints, final_xpoints, final_ypoints, 'r')
+testpoint = 100;
+plot(xpoints, ypoints, final_xpoints, final_ypoints, 'r', xpoints(testpoint), ypoints(testpoint), 'bp',... 
+final_xpoints(testpoint), final_ypoints(testpoint), 'rp', xpoints(testpoint)*2, ypoints(testpoint)*2, 'gp')
 axis equal
 grid
