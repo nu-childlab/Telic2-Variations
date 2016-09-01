@@ -1,4 +1,4 @@
-function [] = Telic2v3()
+function [] = Telic2v4()
 
 %%%%%%FUNCTION DESCRIPTION
 %Telic2v3 is a Telic experiment where the events follow broken-up paths
@@ -531,7 +531,7 @@ function [Breaks, new_xpoints, new_ypoints, start] = makeBreaks(breakType, xpoin
             start = randi(totalpoints);
             new_xpoints = [xpoints(start:totalpoints) xpoints(1:start)];
             new_ypoints = [ypoints(start:totalpoints) ypoints(1:start)];
-            Breaks = linspace(totalpoints/loops, totalpoints+1, loops);
+            Breaks = linspace(totalpoints/loops, totalpoints+1, loops+1);
             Breaks = arrayfun(@(x) round(x),Breaks);
             
             
@@ -556,6 +556,7 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, init_xp
     halfLoop = floor(numberOfFrames/2);
     totalpoints = length(xpoints);
     numberOfLoops = numel(Breaks);
+    [increased_xpoints, increased_ypoints] = getPoints(numel(Breaks), numberOfFrames);
 
     petalnum = 0;
     for b=Breaks
@@ -583,8 +584,8 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, init_xp
                 petalnum = 0;
             end
         end
-        nx(m) = xpoints(m) - init_xpoints(halfLoop + (numberOfFrames * petalnum))/2;
-        ny(m) = ypoints(m) - init_ypoints(halfLoop + (numberOfFrames * petalnum))/2;
+        nx(m) = xpoints(m) - increased_xpoints(halfLoop + (numberOfFrames * petalnum))/2;
+        ny(m) = ypoints(m) - increased_ypoints(halfLoop + (numberOfFrames * petalnum))/2;
     end
 
     %rotate
@@ -619,8 +620,8 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, init_xp
                 petalnum = 0;
             end
         end
-        final_xpoints(m) = copy_nx(m) + (init_xpoints(halfLoop + (numberOfFrames * petalnum)) *1.3);
-        final_ypoints(m) = copy_ny(m) + (init_ypoints(halfLoop + (numberOfFrames * petalnum)) *1.3);
+        final_xpoints(m) = copy_nx(m) + (increased_xpoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
+        final_ypoints(m) = copy_ny(m) + (increased_ypoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
     end
 %     final_xpoints = final_xpoints(1:length(final_xpoints-2));
 %     final_ypoints = final_ypoints(1:length(final_ypoints-2));
