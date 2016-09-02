@@ -1,4 +1,4 @@
-function [] = Telic2v4()
+function [] = Telic2v3()
 
 %%%%%%FUNCTION DESCRIPTION
 %Telic2v3 is a Telic experiment where the events follow broken-up paths
@@ -46,13 +46,16 @@ ifi = Screen('GetFlipInterval', window);
 %%%%%%
 
 randomStart = true;
+%Randomizes the starting point of the figure.
 splitLoops = true;
-correlation = 'corr'; %or 'anti'
+%Splits the pieces apart, spaces, and rotates them
 sameShapes = false;
 %sameShapes only affects trials with 'equal' breaks. If false, it will add
 %an additional break to those trials, thus making the number of 'pieces'
 %equal to the number of loops plus 1
-wroclaw = false;    
+wroclaw = false;   
+%If wroclaw is true, the experiment will have half the experiment use the
+%anti-correlated times from Wroclaw
 
 minSpace = 10;
 %the minimum possible number of frames between steps
@@ -81,21 +84,18 @@ squote = ' ''';
 correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
 anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
 
-correlation_list = {'corr';'corr';'corr';'corr';'corr';'corr';'corr';...
-    'corr';'corr';'corr';'anti';'anti';'anti';'anti';'anti';'anti';...
-    'anti';'anti';'anti';'anti'};
-
-
 pairsbase = [4; 5; 6; 7; 8; 9];
 len = numel(pairsbase);
 pairs = [pairsbase;pairsbase];
 breaklistbase = [repmat({'equal'}, len, 1); repmat({'random'}, len, 1)];
 breaklist = breaklistbase;
+
 if wroclaw
     correlation_base = [repmat({'corr'}, len, 1); repmat({'anti'}, len, 1)];
 else
     correlation_base = repmat({'corr'}, len*2, 1);
 end
+
 correlation_list = correlation_base;
 reps = 4;
 
@@ -109,6 +109,7 @@ end
 shuff = randperm(length(pairs));
 trial_list = pairs(shuff,:);
 breaklist = breaklist(shuff);
+correlation_list = correlation_list(shuff);
 displayTime = 3;
 
 if strcmp(subj, 's999')
