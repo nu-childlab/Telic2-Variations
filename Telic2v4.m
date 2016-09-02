@@ -45,9 +45,14 @@ ifi = Screen('GetFlipInterval', window);
 %FINISHED PARAMETERS
 %%%%%%
 
-loopTime = .75;
-
-framesPerLoop = round(loopTime / ifi) + 1;
+randomStart = true;
+splitLoops = true;
+correlation = 'corr'; %or 'anti'
+sameShapes = false;
+%sameShapes only affects trials with 'equal' breaks. If false, it will add
+%an additional break to those trials, thus making the number of 'pieces'
+%equal to the number of loops plus 1
+wroclaw = false;    
 
 minSpace = 10;
 %the minimum possible number of frames between steps
@@ -73,16 +78,31 @@ squote = ' ''';
 %LISTS
 %%%%%%
 
+correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
+anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
+
+correlation_list = {'corr';'corr';'corr';'corr';'corr';'corr';'corr';...
+    'corr';'corr';'corr';'anti';'anti';'anti';'anti';'anti';'anti';...
+    'anti';'anti';'anti';'anti'};
+
+
 pairsbase = [4; 5; 6; 7; 8; 9];
 len = numel(pairsbase);
 pairs = [pairsbase;pairsbase];
 breaklistbase = [repmat({'equal'}, len, 1); repmat({'random'}, len, 1)];
 breaklist = breaklistbase;
+if wroclaw
+    correlation_base = [repmat({'corr'}, len, 1); repmat({'anti'}, len, 1)];
+else
+    correlation_base = repmat({'corr'}, len*2, 1);
+end
+correlation_list = correlation_base;
 reps = 4;
 
 while reps > 0
     pairs = [pairs;pairsbase];
     breaklist = [breaklist;breaklistbase];
+    correlation_list = [correlation_list;correlation_base];
     reps= reps-1;
 end
 
@@ -148,9 +168,6 @@ else
     blockList = {'objects', 'events'};
 end
 
-% correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
-% anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
-
 %%%%%%RUNNING
 
 instructions(window, screenXpixels, screenYpixels, textsize, textspace);
@@ -172,28 +189,35 @@ for condition = blockList
     
      
     for x = 1:length(trial_list)
-        
         %fixation cross
         fixCross(xCenter, yCenter, black, window, crossTime)
         
         %draw the thing
         numberOfLoops = trial_list(x);
         breakType = breaklist{x};
+        correlationType = correlation_list{x};
+        if strcmp(correlationType, 'corr')
+            loopTime = correlated_values(numberOfLoops)/numberOfLoops;
+        else
+            loopTime = anticorrelated_values(numberOfLoops)/numberOfLoops;
+        end
+        framesPerLoop = round(loopTime / ifi) + 1;
         
         if events
             animateEventLoops(numberOfLoops, framesPerLoop, ...
                 minSpace, scale, xCenter, yCenter, window, ...
                 pauseTime, breakType, breakTime, screenNumber, starTexture, ...
-                ifi, vbl)
+                ifi, vbl, randomStart, splitLoops, sameShapes)
         else
-            displayObjectLoops(numberOfLoops, framesPerLoop, ...
+            displayObjectLoops(numberOfLoops,...
                 minSpace, scale, xCenter, yCenter, window, ...
-                pauseTime, breakType, screenNumber, displayTime)
+                pauseTime, breakType, screenNumber, displayTime,...
+                randomStart, splitLoops, sameShapes)
         end
         
-        [response, time] = getResponse(window, screenXpixels, screenYpixels, textsize, condition{1});
-        fprintf(dataFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
-        fprintf(subjFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
+        [response, rt] = getResponse(window, screenXpixels, screenYpixels, textsize, condition{1});
+        fprintf(dataFile,lineFormat,subj,rt*1000,condition{1}, breakType,numberOfLoops,response);
+        fprintf(subjFile,lineFormat,subj,rt*1000,condition{1}, breakType,numberOfLoops,response);
     end
     if c<2
         breakScreen(window, textsize, textspace);
@@ -224,14 +248,19 @@ end
 function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     minSpace, scale, xCenter, yCenter, window, ...
     pauseTime, breakType, breakTime, screenNumber, imageTexture, ...
-    ifi, vbl)
+    ifi, vbl, randomStart, splitLoops, sameShapes)
     white = WhiteIndex(screenNumber);
     black = BlackIndex(screenNumber);
     grey = white/2;
-    [init_xpoints, init_ypoints] = getPoints(numberOfLoops, framesPerLoop);
-    totalpoints = numel(init_xpoints);
-    [Breaks, xpoints, ypoints, start] = makeBreaks(breakType, init_xpoints, init_ypoints, totalpoints, numberOfLoops, minSpace);
-    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, init_xpoints, init_ypoints, framesPerLoop, Breaks, start);
+    [xpoints, ypoints] = getPoints(numberOfLoops, framesPerLoop);
+    totalpoints = numel(xpoints);
+    if randomStart
+        [xpoints, ypoints, start] = randomizeStartPoint(xpoints, ypoints);
+    end
+    [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, numberOfLoops, minSpace);
+    if splitLoops
+        [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks, start);
+    end
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
     [xpoints, ypoints, Breaks] = scrambleOrder(xpoints, ypoints, Breaks);
@@ -267,9 +296,10 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
 end
 
 
-function [] = displayObjectLoops(numberOfLoops, framesPerLoop, ...
+function [] = displayObjectLoops(numberOfLoops,...
     minSpace, scale, xCenter, yCenter, window, ...
-    pauseTime, breakType, screenNumber, displayTime)
+    pauseTime, breakType, screenNumber, displayTime,...
+    randomStart, splitLoops, sameShapes)
 
     %I have a set number of frames for the display objects, because adding
     %more frames makes the drawings smoother and, unlike in events, has no
@@ -278,17 +308,21 @@ function [] = displayObjectLoops(numberOfLoops, framesPerLoop, ...
     white = WhiteIndex(screenNumber);
     black = BlackIndex(screenNumber);
     grey = white/2;
-    [init_xpoints, init_ypoints] = getPoints(numberOfLoops, dispframes);
-    totalpoints = numel(init_xpoints);
-    [Breaks, xpoints, ypoints, start] = makeBreaks(breakType, init_xpoints, init_ypoints, totalpoints, numberOfLoops, minSpace);
-    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, init_xpoints, init_ypoints, dispframes, Breaks, start);
+    [xpoints, ypoints] = getPoints(numberOfLoops, dispframes);
+    totalpoints = numel(xpoints);
+    if randomStart
+        [xpoints, ypoints, start] = randomizeStartPoint(xpoints, ypoints);
+    end
+    [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, numberOfLoops, minSpace);
+    if splitLoops
+        [xpoints, ypoints] = rotatePoints(xpoints, ypoints, dispframes, Breaks, start);
+    end
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
     for p = 1:totalpoints - 2
         if ~any(p == Breaks) && ~any(p+1 == Breaks)
-            %Screen('DrawDots', window, [points(p, 1) points(p, 2)], 5, black, [], 2);
             Screen('DrawLine', window, black, xpoints(p), ypoints(p), ...
                 xpoints(p+1), ypoints(p+1), 5);
         end
@@ -452,10 +486,7 @@ end
 
 
 function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
-    %OK, so, the ellipses weren't lining up at the origin very well, so
-    %smoothframes designates a few frames to smooth this out. It uses fewer
-    %frames for the ellipse, and instead spends a few frames going from the
-    %end of the ellipse to the origin.
+
     xpoints = [];
     ypoints = [];
     majorAxis = 2;
@@ -498,48 +529,47 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
     end
 end
 
-function [Breaks, new_xpoints, new_ypoints, start] = makeBreaks(breakType, xpoints, ypoints, totalpoints, loops, minSpace)
+function [new_xpoints, new_ypoints, start] = randomizeStartPoint(xpoints, ypoints)
+    start = randi(numel(xpoints));
+    new_xpoints = [xpoints(start:numel(xpoints)) xpoints(1:start)];
+    new_ypoints = [ypoints(start:numel(xpoints)) ypoints(1:start)];
+end
+
+function [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, loops, minSpace)
     if strcmp(breakType, 'equal')
-        %Breaks = 1 : totalpoints/loops : totalpoints;
-        Breaks = linspace(totalpoints/loops, totalpoints+1, loops);
+        if sameShapes
+            %This is the basic equal breaks calculation
+            Breaks = linspace(totalpoints/loops, totalpoints+1, loops);
+        else
+            %To prevent the lines from forming the same shapes, an extra
+            %break is added in
+            Breaks = linspace(totalpoints/loops, totalpoints+1, loops+1);
+        end
         Breaks = arrayfun(@(x) round(x),Breaks);
-        new_xpoints = xpoints;
-        new_ypoints = ypoints;
-        start = 1;
 
     elseif strcmp(breakType, 'random')
         %tbh I found this on stackoverflow and have no idea how it works
         %http://stackoverflow.com/questions/31971344/generating-random-sequence-with-minimum-distance-between-elements-matlab/31977095#31977095
         if loops >1
-%             numberOfBreaks = loops - 1;
-%             %The -10 accounts for some distance away from the last point,
-%             %which I add on separately.
-%             E = (totalpoints-10)-(numberOfBreaks-1)*minSpace;
-% 
-%             ro = rand(numberOfBreaks+1,1);
-%             rn = E*ro(1:numberOfBreaks)/sum(ro);
-% 
-%             s = minSpace*ones(numberOfBreaks,1)+rn;
-% 
-%             Breaks=cumsum(s)-1;
-% 
-%             Breaks = reshape(Breaks, 1, length(Breaks));
-%             Breaks = arrayfun(@(x) round(x),Breaks);
-%             Breaks = [Breaks totalpoints+1];
-            %Change the order based on one random point
-            %Use a fixed set of breaks, like the one in equal
-            start = randi(totalpoints);
-            new_xpoints = [xpoints(start:totalpoints) xpoints(1:start)];
-            new_ypoints = [ypoints(start:totalpoints) ypoints(1:start)];
-            Breaks = linspace(totalpoints/loops, totalpoints+1, loops+1);
+            numberOfBreaks = loops - 1;
+            %The -minSpace accounts for some distance away from the last point,
+            %which I add on separately.
+            E = (totalpoints-minSpace)-(numberOfBreaks-1)*minSpace;
+
+            ro = rand(numberOfBreaks+1,1);
+            rn = E*ro(1:numberOfBreaks)/sum(ro);
+
+            s = minSpace*ones(numberOfBreaks,1)+rn;
+
+            Breaks=cumsum(s)-1;
+
+            Breaks = reshape(Breaks, 1, length(Breaks));
             Breaks = arrayfun(@(x) round(x),Breaks);
+            Breaks = sort([Breaks totalpoints+1]);
             
             
         else
-            Breaks = [totalpoints+1];
-            new_xpoints = xpoints;
-            new_ypoints = ypoints;
-            start = 1;
+            Breaks = totalpoints+1;
         end
         %I'm adding one break on at the end, otherwise I'll end up with
         %more "pieces" than in the equal condition.
@@ -549,18 +579,22 @@ function [Breaks, new_xpoints, new_ypoints, start] = makeBreaks(breakType, xpoin
     end
 end
 
-function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, init_xpoints, ...
-    init_ypoints, numberOfFrames, Breaks, start)
+function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, numberOfFrames, Breaks, start)
+    %This is set up because the randomized start point and/or the
+    %additional break can mess with the directionality.
+    [init_xpoints, init_ypoints] = getPoints(numel(Breaks), numberOfFrames);
     nx = xpoints;
     ny = ypoints;
     halfLoop = floor(numberOfFrames/2);
     totalpoints = length(xpoints);
     numberOfLoops = numel(Breaks);
-    [increased_xpoints, increased_ypoints] = getPoints(numel(Breaks), numberOfFrames);
 
     petalnum = 0;
+    %Usually, the start is 1, so the petalnum starts at 0. However, a
+    %randomized start point may require a different initial direction of
+    %rotation
     for b=Breaks
-       if start < b
+       if start <= b
            break
        else
            petalnum = petalnum + 1;
@@ -584,8 +618,8 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, init_xp
                 petalnum = 0;
             end
         end
-        nx(m) = xpoints(m) - increased_xpoints(halfLoop + (numberOfFrames * petalnum))/2;
-        ny(m) = ypoints(m) - increased_ypoints(halfLoop + (numberOfFrames * petalnum))/2;
+        nx(m) = xpoints(m) - init_xpoints(halfLoop + (numberOfFrames * petalnum))/2;
+        ny(m) = ypoints(m) - init_ypoints(halfLoop + (numberOfFrames * petalnum))/2;
     end
 
     %rotate
@@ -620,16 +654,13 @@ function [final_xpoints, final_ypoints] = rotatePoints(xpoints, ypoints, init_xp
                 petalnum = 0;
             end
         end
-        final_xpoints(m) = copy_nx(m) + (increased_xpoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
-        final_ypoints(m) = copy_ny(m) + (increased_ypoints(halfLoop + (numberOfFrames * petalnum)) *1.5);
+        final_xpoints(m) = copy_nx(m) + (init_xpoints(halfLoop + (numberOfFrames * petalnum)) *1.3);
+        final_ypoints(m) = copy_ny(m) + (init_ypoints(halfLoop + (numberOfFrames * petalnum)) *1.3);
     end
-%     final_xpoints = final_xpoints(1:length(final_xpoints-2));
-%     final_ypoints = final_ypoints(1:length(final_ypoints-2));
 
 end
 
 function [new_xpoints, new_ypoints, new_breaks] = scrambleOrder(xpoints, ypoints, Breaks)
-    %scramblerows = matrix(randperm(length(matrix)),:)
     x_sections = {};
     x_temp = [];
     y_sections = {};

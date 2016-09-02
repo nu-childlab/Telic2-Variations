@@ -47,15 +47,12 @@ ifi = Screen('GetFlipInterval', window);
 
 randomStart = true;
 splitLoops = true;
-time = 'corr'; %or 'anti'
+correlation = 'corr'; %or 'anti'
 sameShapes = true;
 %sameShapes only affects trials with 'equal' breaks. If false, it will add
 %an additional break to those trials, thus making the number of 'pieces'
 %equal to the number of loops plus 1
-
-loopTime = .75;
-
-framesPerLoop = round(loopTime / ifi) + 1;
+wroclaw = false;    
 
 minSpace = 10;
 %the minimum possible number of frames between steps
@@ -81,16 +78,31 @@ squote = ' ''';
 %LISTS
 %%%%%%
 
+correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
+anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
+
+correlation_list = {'corr';'corr';'corr';'corr';'corr';'corr';'corr';...
+    'corr';'corr';'corr';'anti';'anti';'anti';'anti';'anti';'anti';...
+    'anti';'anti';'anti';'anti'};
+
+
 pairsbase = [4; 5; 6; 7; 8; 9];
 len = numel(pairsbase);
 pairs = [pairsbase;pairsbase];
 breaklistbase = [repmat({'equal'}, len, 1); repmat({'random'}, len, 1)];
 breaklist = breaklistbase;
+if wroclaw
+    correlation_base = [repmat({'corr'}, len, 1); repmat({'anti'}, len, 1)];
+else
+    correlation_base = repmat({'corr'}, len*2, 1);
+end
+correlation_list = correlation_base;
 reps = 4;
 
 while reps > 0
     pairs = [pairs;pairsbase];
     breaklist = [breaklist;breaklistbase];
+    correlation_list = [correlation_list;correlation_base];
     reps= reps-1;
 end
 
@@ -156,9 +168,6 @@ else
     blockList = {'objects', 'events'};
 end
 
-% correlated_values = [.75, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6, 6.75];
-% anticorrelated_values = [2.25, 1.5, .75, 6.75, 6, 5.25, 4.5, 3.75, 3];
-
 %%%%%%RUNNING
 
 instructions(window, screenXpixels, screenYpixels, textsize, textspace);
@@ -180,13 +189,19 @@ for condition = blockList
     
      
     for x = 1:length(trial_list)
-        
         %fixation cross
         fixCross(xCenter, yCenter, black, window, crossTime)
         
         %draw the thing
         numberOfLoops = trial_list(x);
         breakType = breaklist{x};
+        correlationType = correlation_list{x};
+        if strcmp(correlationType, 'corr')
+            loopTime = correlated_values(numberOfLoops)/numberOfLoops;
+        else
+            loopTime = anticorrelated_values(numberOfLoops)/numberOfLoops;
+        end
+        framesPerLoop = round(loopTime / ifi) + 1;
         
         if events
             animateEventLoops(numberOfLoops, framesPerLoop, ...
@@ -200,9 +215,9 @@ for condition = blockList
                 randomStart, splitLoops, sameShapes)
         end
         
-        [response, time] = getResponse(window, screenXpixels, screenYpixels, textsize, condition{1});
-        fprintf(dataFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
-        fprintf(subjFile,lineFormat,subj,time*1000,condition{1}, breakType,numberOfLoops,response);
+        [response, rt] = getResponse(window, screenXpixels, screenYpixels, textsize, condition{1});
+        fprintf(dataFile,lineFormat,subj,rt*1000,condition{1}, breakType,numberOfLoops,response);
+        fprintf(subjFile,lineFormat,subj,rt*1000,condition{1}, breakType,numberOfLoops,response);
     end
     if c<2
         breakScreen(window, textsize, textspace);
@@ -233,17 +248,19 @@ end
 function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     minSpace, scale, xCenter, yCenter, window, ...
     pauseTime, breakType, breakTime, screenNumber, imageTexture, ...
-    ifi, vbl, randomStart, splitLoops, sameshape)
+    ifi, vbl, randomStart, splitLoops, sameShapes)
     white = WhiteIndex(screenNumber);
     black = BlackIndex(screenNumber);
     grey = white/2;
     [xpoints, ypoints] = getPoints(numberOfLoops, framesPerLoop);
-    totalpoints = numel(init_xpoints);
+    totalpoints = numel(xpoints);
     if randomStart
         [xpoints, ypoints, start] = randomizeStartPoint(xpoints, ypoints);
     end
-    [Breaks] = makeBreaks(breakType, totalpoints, numberOfLoops, minSpace);
-    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, xpoints, ypoints, framesPerLoop, Breaks, start);
+    [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, numberOfLoops, minSpace);
+    if splitLoops
+        [xpoints, ypoints] = rotatePoints(xpoints, ypoints, framesPerLoop, Breaks, start);
+    end
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
     [xpoints, ypoints, Breaks] = scrambleOrder(xpoints, ypoints, Breaks);
@@ -291,17 +308,21 @@ function [] = displayObjectLoops(numberOfLoops,...
     white = WhiteIndex(screenNumber);
     black = BlackIndex(screenNumber);
     grey = white/2;
-    [init_xpoints, init_ypoints] = getPoints(numberOfLoops, dispframes);
-    totalpoints = numel(init_xpoints);
-    [Breaks, xpoints, ypoints, start] = makeBreaks(breakType, init_xpoints, init_ypoints, totalpoints, numberOfLoops, minSpace);
-    [xpoints, ypoints] = rotatePoints(xpoints, ypoints, init_xpoints, init_ypoints, dispframes, Breaks, start);
+    [xpoints, ypoints] = getPoints(numberOfLoops, dispframes);
+    totalpoints = numel(xpoints);
+    if randomStart
+        [xpoints, ypoints, start] = randomizeStartPoint(xpoints, ypoints);
+    end
+    [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, numberOfLoops, minSpace);
+    if splitLoops
+        [xpoints, ypoints] = rotatePoints(xpoints, ypoints, dispframes, Breaks, start);
+    end
     xpoints = (xpoints .* scale) + xCenter;
     ypoints = (ypoints .* scale) + yCenter;
     Screen('FillRect', window, grey);
     Screen('Flip', window);
     for p = 1:totalpoints - 2
         if ~any(p == Breaks) && ~any(p+1 == Breaks)
-            %Screen('DrawDots', window, [points(p, 1) points(p, 2)], 5, black, [], 2);
             Screen('DrawLine', window, black, xpoints(p), ypoints(p), ...
                 xpoints(p+1), ypoints(p+1), 5);
         end
@@ -509,9 +530,9 @@ function [xpoints, ypoints] = getPoints(numberOfLoops, numberOfFrames)
 end
 
 function [new_xpoints, new_ypoints, start] = randomizeStartPoint(xpoints, ypoints)
-    start = randi(totalpoints);
-    new_xpoints = [xpoints(start:totalpoints) xpoints(1:start)];
-    new_ypoints = [ypoints(start:totalpoints) ypoints(1:start)];
+    start = randi(numel(xpoints));
+    new_xpoints = [xpoints(start:numel(xpoints)) xpoints(1:start)];
+    new_ypoints = [ypoints(start:numel(xpoints)) ypoints(1:start)];
 end
 
 function [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, loops, minSpace)
