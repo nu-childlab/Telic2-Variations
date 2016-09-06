@@ -2,11 +2,11 @@ function [] = Telic2v3()
 
 %%%%%%FUNCTION DESCRIPTION
 %Telic2v3 is a Telic experiment where the events follow broken-up paths
-%It is NOT completed
+%with the same shape
 %It is meant for standalone use
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-Screen('Preference', 'SkipSyncTests', 1);
+Screen('Preference', 'SkipSyncTests', 0);
 close all;
 sca
 PsychDefaultSetup(2);

@@ -1,12 +1,12 @@
-function [] = Telic2v3()
+function [] = Telic2v4()
 
 %%%%%%FUNCTION DESCRIPTION
-%Telic2v3 is a Telic experiment where the events follow broken-up paths
-%It is NOT completed
+%Telic2v4 is a Telic experiment where the events follow broken-up paths of
+%the same length, but different shapes
 %It is meant for standalone use
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-Screen('Preference', 'SkipSyncTests', 1);
+Screen('Preference', 'SkipSyncTests', 0);
 close all;
 sca
 PsychDefaultSetup(2);

@@ -5,7 +5,7 @@ function [] = Telic2v2()
 %It is meant for standalone use
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-Screen('Preference', 'SkipSyncTests', 1);
+Screen('Preference', 'SkipSyncTests', 0);
 close all;
 sca
 PsychDefaultSetup(2);
