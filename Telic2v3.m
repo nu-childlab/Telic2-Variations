@@ -257,6 +257,8 @@ function [] = animateEventLoops(numberOfLoops, framesPerLoop, ...
     totalpoints = numel(xpoints);
     if randomStart
         [xpoints, ypoints, start] = randomizeStartPoint(xpoints, ypoints);
+    else
+        start = 1;
     end
     [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, numberOfLoops, minSpace);
     if splitLoops
@@ -313,6 +315,8 @@ function [] = displayObjectLoops(numberOfLoops,...
     totalpoints = numel(xpoints);
     if randomStart
         [xpoints, ypoints, start] = randomizeStartPoint(xpoints, ypoints);
+    else
+        start = 1;
     end
     [Breaks] = makeBreaks(breakType, sameShapes, totalpoints, numberOfLoops, minSpace);
     if splitLoops
