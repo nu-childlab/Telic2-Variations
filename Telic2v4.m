@@ -150,11 +150,11 @@ vbl = Screen('Flip', window);
 %%%%%%DATA FILES
 
 initprint = 0;
-if ~(exist('Data/2v3/Telic2v3data.csv', 'file') == 2)
+if ~(exist('Data/2v4/Telic2v4data.csv', 'file') == 2)
     initprint = 1;
 end
-dataFile = fopen('Data/2v3/Telic2v3data.csv', 'a');
-subjFile = fopen(['Data/2v3/Telic2v3_' subj '.csv'],'a');
+dataFile = fopen('Data/2v4/Telic2v4data.csv', 'a');
+subjFile = fopen(['Data/2v4/Telic2v4_' subj '.csv'],'a');
 if initprint
     fprintf(dataFile, 'subject,time,condition,break,loops,response\n');
 end
